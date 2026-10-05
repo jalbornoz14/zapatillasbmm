@@ -1,0 +1,14 @@
+BMM Zapatillas - demo de tienda
+
+Cómo abrirla
+  Doble clic en index.html. No necesita instalar nada ni servidor.
+
+Qué incluye
+  Portada, catálogo con búsqueda y filtros, detalle con tallas, carrito
+  y pedido por WhatsApp (sin pago en línea).
+
+Dónde cambiar el contenido
+  js/data.js  -> zapatillas, precios, stock por talla, nombre de la tienda,
+                 número de WhatsApp y mensajes bajo la portada.
+  Para usar una foto real: guarda la imagen en una carpeta img y agrega
+  a la zapatilla   image: 'img/archivo.jpg'
