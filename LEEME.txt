@@ -1,14 +1,27 @@
 BMM Zapatillas - demo de tienda
 
-Cómo abrirla
+Como abrirla
   Doble clic en index.html. No necesita instalar nada ni servidor.
 
-Qué incluye
-  Portada, catálogo con búsqueda y filtros, detalle con tallas, carrito
-  y pedido por WhatsApp (sin pago en línea).
+Cargar zapatillas reales desde KicksDB (una sola vez)
+  1. Crea tu cuenta gratis en https://kicks.dev y copia tu clave en https://kicks.dev/api-keys
+  2. Doble clic en importar-catalogo.bat y pega la clave cuando la pida.
+  3. Al terminar, abre index.html: veras el catalogo real.
+  El importador usa unas 6 consultas (una por marca), guarda los datos en
+  js/catalogo.js y copia las fotos a la carpeta img. La clave no se guarda.
+  Para cambiar marcas o cantidad, desde PowerShell:
+    .\importar-catalogo.ps1 -Marcas "Nike, Jordan, adidas" -PorMarca 15 -TipoCambio 3.75
 
-Dónde cambiar el contenido
-  js/data.js  -> zapatillas, precios, stock por talla, nombre de la tienda,
-                 número de WhatsApp y mensajes bajo la portada.
-  Para usar una foto real: guarda la imagen en una carpeta img y agrega
-  a la zapatilla   image: 'img/archivo.jpg'
+Por que aguanta muchos usuarios
+  La tienda nunca llama a la API: solo sirve archivos (html, css, js, img).
+  Sube la carpeta completa a un hosting estatico con CDN
+  (Cloudflare Pages, Netlify o Vercel). No hace falta subir los importar-catalogo.*
+
+Donde cambiar el contenido
+  js/data.js      -> nombre de la tienda, numero de WhatsApp, mensajes bajo la portada
+                     y el catalogo de ejemplo (se usa si no has importado nada).
+  js/catalogo.js  -> catalogo importado. Puedes editar precios y stock a mano.
+
+Ojo
+  Los precios vienen del mercado de reventa en dolares, convertidos a soles.
+  El stock por talla es de ejemplo. Las fotos son de StockX.

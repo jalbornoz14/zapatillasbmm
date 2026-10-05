@@ -5,7 +5,6 @@
   'use strict';
 
   const SIZES = ['36', '37', '38', '39', '40', '41', '42', '43', '44'];
-  const GENDERS = ['Hombre', 'Mujer', 'Unisex'];
   const INK = '#17163B';
 
   const $ = (sel, root = document) => root.querySelector(sel);
@@ -19,6 +18,7 @@
   const money = (n) => 'S/ ' + Number(n || 0).toFixed(2);
   const clone = (v) => JSON.parse(JSON.stringify(v));
   const priceOf = (p) => (p.salePrice ? p.salePrice : p.price);
+  const fullName = (p) => (p.name.toLowerCase().startsWith(p.brand.toLowerCase()) ? p.name : p.brand + ' ' + p.name);
   const stockOf = (p) => SIZES.reduce((s, k) => s + (Number(p.sizes?.[k]) || 0), 0);
   const safeHex = (v, fallback) => (/^#[0-9a-f]{6}$/i.test(v || '') ? v : fallback);
   const isDark = (hex) => {
@@ -29,6 +29,11 @@
 
   /* ---------- datos ---------- */
   const state = clone(window.BMM_SEED);
+  // Si ya se corrió el importador, el catálogo real reemplaza al de ejemplo.
+  if (Array.isArray(window.BMM_CATALOGO) && window.BMM_CATALOGO.length) {
+    state.products = clone(window.BMM_CATALOGO);
+  }
+  const GENDERS = ['Hombre', 'Mujer', 'Unisex', 'Niños'].filter((g) => state.products.some((p) => p.gender === g));
 
   let cart = [];
   function loadCart() {
@@ -65,9 +70,9 @@
   }
 
   function tileHTML(p, extra = '') {
-    const tile = safeHex(p.art?.tile, '#E0E3EC');
+    const tile = p.image ? '#FFFFFF' : safeHex(p.art?.tile, '#E0E3EC');
     const media = p.image
-      ? `<img src="${esc(p.image)}" alt="${esc(p.brand + ' ' + p.name)}" loading="lazy">`
+      ? `<img src="${esc(p.image)}" alt="${esc(fullName(p))}" loading="lazy">`
       : shoeSVG(p.art);
     return `<div class="tile ${p.image ? 'tile--photo' : ''} ${extra}" style="--tile:${tile}">${media}</div>`;
   }
@@ -121,13 +126,14 @@
     const list = visibleProducts();
     const p = list.find((x) => x.featured && stockOf(x) > 0) || list.find((x) => stockOf(x) > 0) || list[0];
     if (!p) return '';
-    const tile = safeHex(p.art?.tile, '#E0E3EC');
+    const tile = p.image ? '#FFFFFF' : safeHex(p.art?.tile, '#E0E3EC');
     const off = p.salePrice ? Math.round((1 - p.salePrice / p.price) * 100) : 0;
-    return `<section class="hero ${isDark(tile) ? 'hero--dark' : ''}" style="--tile:${tile}">
+    return `<section class="hero ${isDark(tile) ? 'hero--dark' : ''} ${p.image ? 'hero--photo' : ''}" style="--tile:${tile}">
       <div class="hero__text">
         <p class="hero__brand">${esc(p.brand)}</p>
-        <h1 class="hero__name">${esc(p.name)}</h1>
-        <p class="hero__desc">${esc(p.description)}</p>
+        <h1 class="hero__name ${p.name.length > 16 ? 'hero__name--long' : ''}">${esc(p.name)}</h1>
+        ${p.colorway ? `<p class="hero__color">${esc(p.colorway)}</p>` : ''}
+        ${p.description ? `<p class="hero__desc">${esc(p.description)}</p>` : ''}
         <div class="hero__buy">
           ${priceHTML(p)}
           <button class="btn btn--ink" type="button" data-act="open-product" data-id="${esc(p.id)}">Ver tallas disponibles</button>
@@ -178,7 +184,7 @@
       if (filters.brand && p.brand !== filters.brand) return false;
       if (filters.gender && p.gender !== filters.gender) return false;
       if (filters.size && !(Number(p.sizes?.[filters.size]) > 0)) return false;
-      if (q && !(p.name + ' ' + p.brand).toLowerCase().includes(q)) return false;
+      if (q && !(p.name + ' ' + p.brand + ' ' + (p.colorway || '') + ' ' + (p.sku || '')).toLowerCase().includes(q)) return false;
       return true;
     });
     if (filters.sort === 'precio-asc') list = [...list].sort((a, b) => priceOf(a) - priceOf(b));
@@ -196,6 +202,7 @@
         ${badge}
         <span class="card__brand">${esc(p.brand)}</span>
         <span class="card__name">${esc(p.name)}</span>
+        ${p.colorway ? `<span class="card__color">${esc(p.colorway)}</span>` : ''}
         ${priceHTML(p)}
       </button>
     </li>`;
@@ -250,10 +257,12 @@
       <button class="x" type="button" data-act="close-dialog" aria-label="Cerrar">×</button>
       ${tileHTML(p, 'pd__tile')}
       <div class="pd__info">
-        <p class="pd__brand">${esc(p.brand)} · ${esc(p.gender)}</p>
+        <p class="pd__brand">${esc(p.brand)}, ${esc(String(p.gender).toLowerCase())}</p>
         <h2 class="pd__name">${esc(p.name)}</h2>
         ${priceHTML(p)}
-        <p class="pd__desc">${esc(p.description)}</p>
+        ${p.colorway ? `<p class="pd__color">${esc(p.colorway)}</p>` : ''}
+        ${p.description ? `<p class="pd__desc">${esc(p.description)}</p>` : ''}
+        ${p.sku ? `<p class="pd__sku">Código ${esc(p.sku)}</p>` : ''}
         <fieldset class="sizes">
           <legend>${out ? 'Agotada en todas las tallas' : 'Elige tu talla'}</legend>
           <div class="sizes__list">
@@ -306,7 +315,8 @@
       : `<ul class="cart__lines">${lines.map((l) => `<li class="line">
             ${tileHTML(l.p, 'line__tile')}
             <div class="line__info">
-              <p class="line__name">${esc(l.p.brand)} ${esc(l.p.name)}</p>
+              <p class="line__name">${esc(fullName(l.p))}</p>
+              ${l.p.colorway ? `<p class="line__meta">${esc(l.p.colorway)}</p>` : ''}
               <p class="line__meta">Talla ${esc(l.size)}</p>
               <div class="qty" role="group" aria-label="Cantidad">
                 <button type="button" data-act="qty" data-id="${esc(l.id)}" data-size="${esc(l.size)}" data-d="-1" aria-label="Quitar uno">−</button>
@@ -356,14 +366,14 @@
     if (!lines.length) return fail('Tu carrito está vacío.');
 
     const items = lines.map((l) => ({
-      productId: l.id, name: l.p.name, brand: l.p.brand, size: l.size, qty: l.qty, price: priceOf(l.p)
+      productId: l.id, name: fullName(l.p) + (l.p.colorway ? ' ' + l.p.colorway : ''), brand: l.p.brand, size: l.size, qty: l.qty, price: priceOf(l.p)
     }));
     const total = items.reduce((s, i) => s + i.price * i.qty, 0);
     const id = 'B-' + String(Date.now()).slice(-5);
     const s = state.settings;
     const text = [
       `Hola ${s.storeName}, quiero hacer este pedido:`,
-      ...items.map((i) => `• ${i.qty} × ${i.brand} ${i.name}, talla ${i.size}: ${money(i.price * i.qty)}`),
+      ...items.map((i) => `• ${i.qty} × ${i.name}, talla ${i.size}: ${money(i.price * i.qty)}`),
       `Total: ${money(total)}`,
       `Nombre: ${name}`,
       `Entrega: ${delivery}${delivery === 'Delivery' ? ' a ' + address : ''}`,
